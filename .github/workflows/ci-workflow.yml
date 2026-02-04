@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkouts@v4
+        uses: actions/checkout@v6
       - name: Set up Python 3.12
         uses: actions/setup-python@v6.2.0
         with:
@@ -26,7 +26,7 @@ jobs:
           uv sync --locked --all-extras --dev
       - name: Run pytest and generate report
         run: |
-          pytest \
+          uv run pytest \
             --disable-warnings \
             --cov=./src \
             --cov-report=html

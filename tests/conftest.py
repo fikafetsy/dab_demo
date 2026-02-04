@@ -1,62 +1,50 @@
-"""This file configures pytest, initializes Databricks Connect, and provides fixtures for Spark and loading test data."""
+"""Pytest configuration and fixtures for Spark.
 
-import os, sys, pathlib
+This module avoids importing `databricks.connect` at module import time
+because that package may raise non-ImportError exceptions in environments
+without a compatible SparkSession. Imports of Databricks-specific APIs are
+performed lazily inside fixtures or helper functions and guarded with
+broad exception handlers to allow falling back to a local `pyspark` session.
+"""
+
+import csv
+import json
+import os
+import pathlib
+import sys
 from contextlib import contextmanager
 
+import pytest
 
-try:
-    from databricks.connect import DatabricksSession
-    from databricks.sdk import WorkspaceClient
-    from pyspark.sql import SparkSession
-    import pytest
-    import json
-    import csv
-    import os
-except ImportError:
-    raise ImportError(
-        "Test dependencies not found.\n\nRun tests using 'uv run pytest'. See http://docs.astral.sh/uv to learn more about uv."
-    )
 
 @pytest.fixture()
-def spark() -> SparkSession:
-    """Get or create a SparkSession."""
+def spark():
+    """Return a SparkSession — prefer Databricks Connect when available.
+
+    This tries to import and initialize `DatabricksSession`. Any exception
+    during that process is caught and we fall back to a local
+    `pyspark.sql.SparkSession`.
+    """
     try:
         from databricks.connect import DatabricksSession
 
         spark = DatabricksSession.builder.getOrCreate()
         print("==> Using DatabricksSession.")
-    except ImportError:
+        return spark
+    except Exception:
         try:
             from pyspark.sql import SparkSession
 
             spark = SparkSession.builder.getOrCreate()
             print("==> Using Local SparkSession.")
+            return spark
         except ImportError:
             raise ImportError("Neither DatabricksSession nor SparkSession could be imported.")
 
 
 @pytest.fixture()
-def spark() -> SparkSession:
-    """Provide a SparkSession fixture for tests.
-
-    Minimal example:
-        def test_uses_spark(spark):
-            df = spark.createDataFrame([(1,)], ["x"])
-            assert df.count() == 1
-    """
-    return DatabricksSession.builder.getOrCreate()
-
-
-@pytest.fixture()
-def load_fixture(spark: SparkSession):
-    """Provide a callable to load JSON or CSV from fixtures/ directory.
-
-    Example usage:
-
-        def test_using_fixture(load_fixture):
-            data = load_fixture("my_data.json")
-            assert data.count() >= 1
-    """
+def load_fixture(spark):
+    """Callable fixture to load JSON or CSV files from the `fixtures/` directory."""
 
     def _loader(filename: str):
         path = pathlib.Path(__file__).parent.parent / "fixtures" / filename
@@ -74,16 +62,27 @@ def load_fixture(spark: SparkSession):
 
 
 def _enable_fallback_compute():
-    """Enable serverless compute if no compute is specified."""
-    conf = WorkspaceClient().config
-    if conf.serverless_compute_id or conf.cluster_id or os.environ.get("SPARK_REMOTE"):
+    """Enable serverless compute if no compute is specified.
+
+    This uses `databricks.sdk.WorkspaceClient` if available; failure to import
+    or initialize the client is ignored because it's only an advisory helper
+    for tests running against Databricks.
+    """
+    try:
+        from databricks.sdk import WorkspaceClient
+
+        conf = WorkspaceClient().config
+        if conf.serverless_compute_id or conf.cluster_id or os.environ.get("SPARK_REMOTE"):
+            return
+
+        url = "https://docs.databricks.com/dev-tools/databricks-connect/cluster-config"
+        print("☁️ no compute specified, falling back to serverless compute", file=sys.stderr)
+        print(f"  see {url} for manual configuration", file=sys.stdout)
+
+        os.environ["DATABRICKS_SERVERLESS_COMPUTE_ID"] = "auto"
+    except Exception:
+        # If the SDK isn't present or fails to initialize, skip fallback.
         return
-
-    url = "https://docs.databricks.com/dev-tools/databricks-connect/cluster-config"
-    print("☁️ no compute specified, falling back to serverless compute", file=sys.stderr)
-    print(f"  see {url} for manual configuration", file=sys.stdout)
-
-    os.environ["DATABRICKS_SERVERLESS_COMPUTE_ID"] = "auto"
 
 
 @contextmanager
@@ -98,14 +97,25 @@ def _allow_stderr_output(config: pytest.Config):
 
 
 def pytest_configure(config: pytest.Config):
-    """Configure pytest session."""
+    """Configure pytest session and attempt to prepare Databricks compute.
+
+    Initialization of Databricks-specific builders is attempted lazily and
+    guarded so that tests can still run locally when Databricks packages are
+    present but not fully functional in the environment.
+    """
     with _allow_stderr_output(config):
         _enable_fallback_compute()
 
-        # Initialize Spark session eagerly, so it is available even when
-        # SparkSession.builder.getOrCreate() is used. For DB Connect 15+,
-        # we validate version compatibility with the remote cluster.
-        if hasattr(DatabricksSession.builder, "validateSession"):
-            DatabricksSession.builder.validateSession().getOrCreate()
-        else:
-            DatabricksSession.builder.getOrCreate()
+        try:
+            # Validate or create a remote session only if Databricks Connect is
+            # available and behaves as expected. Any exception here should not
+            # prevent tests from running with the local Spark fallback.
+            from databricks.connect import DatabricksSession
+
+            if hasattr(DatabricksSession.builder, "validateSession"):
+                DatabricksSession.builder.validateSession().getOrCreate()
+            else:
+                DatabricksSession.builder.getOrCreate()
+        except Exception:
+            # Ignore errors during eager Databricks initialization.
+            return
