@@ -1,0 +1,111 @@
+# This is a Databricks asset bundle definition for dab_demo.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: dab_demo
+  uuid: 0cdbdab0-266d-40b0-8848-652062c16aa2
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+resources:
+  jobs:
+    demo_job:
+      name: demo_job
+      tasks:
+        - task_key: job_cluster
+          notebook_task:
+            notebook_path: notebook/customers.ipynb
+            source: WORKSPACE
+          email_notifications:
+            on_success:
+              - ffetsy@gmail.com
+            on_failure:
+              - ffetsy@gmail.com
+          environment_key: job_cluster_environment
+      queue:
+        enabled: true
+      environments:
+        - environment_key: job_cluster_environment
+          spec:
+            environment_version: "4"
+      performance_target: PERFORMANCE_OPTIMIZED
+
+# Variable declarations. These variables are assigned in the dev/prod targets below.
+variables:
+  warehouse_id:
+    description: Warehouse
+    default: 97adbb92d41fedad
+  env:
+    default: dev
+    
+# Catalog variables
+  addresses_catalog:
+    description: The catalog to use
+    default: addresses_dev
+  customers_catalog:
+    default: customers_dev
+  orders_catalog:
+    default: orders_dev
+
+# Schema variables
+  bronze_schema:
+    default: bronze
+  silver_schema:
+    default: silver
+  gold_schema:
+    default: gold
+  landing_schema:
+    default: landing
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405618625572088.8.azuredatabricks.net
+    variables:
+      #catalog: ws_dbx_dev
+      #schema: ${workspace.current_user.short_name}
+      env: dev
+      addresses_catalog: addresses_dev
+      customers_catalog: customers_dev
+      orders_catalog: orders_dev
+
+  uat:
+    mode: production
+    workspace:
+      host: https://adb-7405612471071847.7.azuredatabricks.net
+      # We explicitly deploy to /Workspace/Users/devbob999@gmail.com to make sure we only have a single copy.
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      #catalog: ws_dbx_uat
+      #schema: prod
+      env: uat
+      addresses_catalog: addresses_uat
+      customers_catalog: customers_uat
+      orders_catalog: orders_uat
+    permissions:
+      - user_name: devbob999@gmail.com
+        level: CAN_MANAGE
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-7405608026165201.1.azuredatabricks.net
+      # We explicitly deploy to /Workspace/Users/devbob999@gmail.com to make sure we only have a single copy.
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      #catalog: ws_dbx_prod
+      #schema: prod
+      env: prod
+      addresses_catalog: addresses_prod
+      customers_catalog: customers_prod
+      orders_catalog: orders_prod
+    permissions:
+      - user_name: devbob999@gmail.com
+        level: CAN_MANAGE

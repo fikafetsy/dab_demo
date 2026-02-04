@@ -1,0 +1,24 @@
+resources:
+  pipelines:
+    pipeline_orders_bronze:
+      name: pipeline_orders_bronze
+
+      catalog: ${var.orders_catalog}
+      schema: ${var.bronze_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        source_catalog: ${var.orders_catalog}
+        landing_schema: ${var.landing_schema}
+        source_folder: "source_orders"
+        source_path: /Volumes/${var.orders_catalog}/${var.landing_schema}/source_orders
+        
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/orders_etl.sql"

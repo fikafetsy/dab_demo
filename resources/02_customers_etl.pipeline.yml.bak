@@ -1,0 +1,34 @@
+# resources/02_customers_etl.pipeline.yml
+resources:
+  pipelines:
+    dab_demo_etl_silver:
+      name: dab_demo_etl_silver
+
+      # Où seront créées les tables LIVE.* de CE pipeline
+      catalog: customers_dev
+      schema: 02_silver
+
+      # Exécution
+      continuous: false
+      development: true
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      # Emplacement "racine" du pipeline dans le workspace
+      root_path: "../src/dab_demo_etl"
+
+      # (Optionnel mais utile) paramètres de config réutilisables dans ton SQL si tu fais ${conf.x}
+      # Exemple: FROM STREAM(${conf.source_catalog}.`${conf.bronze_schema}`.bronze_customers)
+      configuration:
+        source_catalog: customers_dev
+        bronze_schema: 01_bronze
+        landing_schema: 00_landing
+
+      # Fichiers SQL / notebooks exécutés par le pipeline.
+      # Idéalement, sépare tes scripts : transformations/02_silver/...
+      # Si tu n'as pas encore séparé, tu peux laisser transformations/** comme dans le pipeline 01,
+      # mais c’est plus propre de viser le sous-dossier silver.
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/02_silver/**"

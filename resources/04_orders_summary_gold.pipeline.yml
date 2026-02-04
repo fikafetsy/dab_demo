@@ -1,0 +1,24 @@
+resources:
+  pipelines:
+    pipeline_orders_summary_gold:
+      name: pipeline_orders_summary_gold
+
+      catalog: ${var.orders_catalog}
+      schema: ${var.gold_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        customers_catalog: ${var.customers_catalog}
+        addresses_catalog: ${var.addresses_catalog}
+        orders_catalog: ${var.orders_catalog}
+        silver_schema: ${var.silver_schema}
+
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/create_order_summary.sql"

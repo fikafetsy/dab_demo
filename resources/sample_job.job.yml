@@ -1,0 +1,64 @@
+resources:
+  jobs:
+    order_job:
+      name: order_job
+      # schedule:
+      #   quartz_cron_expression: "0 * 7-22 * * ?"
+      #   timezone_id: Europe/Paris
+      #   pause_status: UNPAUSED
+
+      tasks:
+        - task_key: addresses_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.addresses_pipeline_bronze.id}
+            full_refresh: false
+
+        - task_key: addresses_silver
+          depends_on:
+            - task_key: addresses_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.pipeline_addresses_cleaning_silver.id}
+            full_refresh: false
+
+        - task_key: customers_job
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.dab_demo_etl.id}
+            full_refresh: false
+
+        - task_key: customers_silver_clean
+          depends_on:
+            - task_key: customers_job
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.dab_demo_etl_silver.id}
+            full_refresh: false
+
+        - task_key: orders_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.pipeline_orders_bronze.id}
+            full_refresh: false
+
+        - task_key: orders_silver_clean
+          depends_on:
+            - task_key: orders_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.pipeline_orders_cleaning_silver.id}
+            full_refresh: false
+
+        - task_key: orders_silver
+          depends_on:
+            - task_key: orders_silver_clean
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.pipeline_orders_gold.id}
+            full_refresh: false
+
+        - task_key: orders_summary_gold
+          depends_on:
+            - task_key: orders_silver
+            - task_key: addresses_silver
+            - task_key: customers_silver_clean
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.pipeline_orders_summary_gold.id}
+
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED

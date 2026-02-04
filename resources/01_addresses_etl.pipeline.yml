@@ -1,0 +1,23 @@
+resources:
+  pipelines:
+    addresses_pipeline_bronze:
+      name: pipeline_addresses_bronze
+
+      catalog: ${var.addresses_catalog}
+      schema: ${var.bronze_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        source_catalog: ${var.addresses_catalog}
+        landing_schema: ${var.landing_schema}
+        source_folder: "source_addresses"
+        
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/addresses_etl.py"

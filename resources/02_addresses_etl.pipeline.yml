@@ -1,0 +1,23 @@
+resources:
+  pipelines:
+    pipeline_addresses_cleaning_silver:
+      name: pipeline_addresses_cleaning_silver
+
+      catalog: ${var.addresses_catalog}
+      schema: ${var.silver_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        source_catalog: ${var.addresses_catalog}
+        landing_schema: ${var.landing_schema}
+        source_folder: source_addresses
+
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/addresses_silver_clean.py"

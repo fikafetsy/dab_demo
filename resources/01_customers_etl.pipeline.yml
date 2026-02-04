@@ -1,0 +1,24 @@
+resources:
+  pipelines:
+    dab_demo_etl:
+      name: dab_demo_etl
+
+      catalog: ${var.customers_catalog}
+      schema: ${var.bronze_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        source_catalog: ${var.customers_catalog}
+        landing_schema: ${var.landing_schema}
+        source_folder: "source_customers"
+        source_path: /Volumes/${var.customers_catalog}/${var.landing_schema}/source_customers
+        
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/customers_etl.sql"

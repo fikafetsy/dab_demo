@@ -1,0 +1,22 @@
+resources:
+  pipelines:
+    pipeline_orders_gold:
+      name: pipeline_orders_silver
+
+      catalog: ${var.orders_catalog}
+      schema: ${var.silver_schema}
+
+      continuous: false
+      channel: CURRENT
+      photon: false
+      serverless: true
+
+      root_path: "../src/dab_demo_etl"
+
+      configuration:
+        source_catalog: orders_dev
+        bronze_schema: bronze
+
+      libraries:
+        - glob:
+            include: "../src/dab_demo_etl/transformations/orders_silver.sql"
