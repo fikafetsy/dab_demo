@@ -29,12 +29,14 @@ jobs:
           uv run pytest \
             --disable-warnings \
             --cov=./src \
-            --cov-report=html
+            --cov-report=html:artifacts
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v6.0.0
         with:
           name: coverage-html
-          path: htmlcov
+          path: artifacts
+          
           
           
     
