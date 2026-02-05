@@ -92,6 +92,8 @@ targets:
     permissions:
       - user_name: devbob999@gmail.com
         level: CAN_MANAGE
+    run_as:
+      user_name: devbob999@gmail.com
 
   prod:
     mode: production
