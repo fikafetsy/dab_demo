@@ -28,7 +28,7 @@ jobs:
           cat <<EOF >~/.databrickscfg
           [UAT]
           host = https://adb-7405612471071847.7.azuredatabricks.net
-          azure_tenant_id = ${{ secrets.TOKEN }}
+          token = ${{ secrets.TOKEN }}
           EOF
       - name: Deploy UAT
         run: |
@@ -39,6 +39,7 @@ jobs:
     name: Deploy to PROD
     runs-on: ubuntu-24.04
     environment: prod
+    needs: cd-deploy-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -58,7 +59,7 @@ jobs:
           cat <<EOF >~/.databrickscfg
           [PROD]
           host = https://adb-7405608026165201.1.azuredatabricks.net
-          azure_tenant_id = ${{ secrets.TOKEN }}
+          token = ${{ secrets.TOKEN }}
           EOF
       - name: Deploy PROD
         run: |
