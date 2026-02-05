@@ -1,0 +1,71 @@
+name: CD Workflow
+
+on: 
+  push:
+    branches:
+      - main
+jobs:
+  cd-deploy-test:
+    name: Deploy to UAT
+    runs-on: ubuntu-24.04
+    environment: uat
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.12.3'
+      - name: Install Databricks CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Install uv 
+        uses: astral-sh/setup-uv@v7 
+      - name: Install Dependencies
+        run: |
+          uv sync --locked --all-extras --dev
+      - name: Configure Databricks
+        run: |
+          cat <<EOF >~/.databrickscfg
+          [UAT]
+          host = https://adb-7405612471071847.7.azuredatabricks.net
+          azure_tenant_id = ${{ secrets.TOKEN }}
+          EOF
+      - name: Deploy UAT
+        run: |
+          databricks bundle deploy \
+            --target uat \
+            --profile UAT
+  cd-deploy-prod:
+    name: Deploy to PROD
+    runs-on: ubuntu-24.04
+    environment: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: '3.12.3'
+      - name: Install Databricks CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Install uv 
+        uses: astral-sh/setup-uv@v7 
+      - name: Install Dependencies
+        run: |
+          uv sync --locked --all-extras --dev
+      - name: Configure Databricks
+        run: |
+          cat <<EOF >~/.databrickscfg
+          [PROD]
+          host = https://adb-7405608026165201.1.azuredatabricks.net
+          azure_tenant_id = ${{ secrets.TOKEN }}
+          EOF
+      - name: Deploy PROD
+        run: |
+          databricks bundle deploy \
+            --target prod \
+            --profile PROD
+          
+        
+        
+    
